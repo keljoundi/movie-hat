@@ -129,6 +129,9 @@ if [ "$CHOICE" == "2" ]; then
   fi
 fi
 
+# Prompt for Container Root Password
+ROOT_PASSWORD=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --title "Container Root Password" --passwordbox "Enter a root password for the container console/SSH (leave blank for passwordless console):" 8 58 3>&1 1>&2 2>&3 || true)
+
 msg_info "Validating container template storage..."
 TEMPLATE_STORAGE=$(pvesm status -content vztmpl | awk 'NR>1 {print $1; exit}')
 if [ -z "$TEMPLATE_STORAGE" ]; then
@@ -150,6 +153,11 @@ if [ ! -f "$LOCAL_TEMPLATE_PATH" ]; then
   pveam download "$TEMPLATE_STORAGE" "$TEMPLATE_NAME"
 fi
 
+PASSWORD_OPTS=()
+if [ -n "$ROOT_PASSWORD" ]; then
+  PASSWORD_OPTS=(--password "$ROOT_PASSWORD")
+fi
+
 msg_info "Creating LXC container (${CTID} - ${HOSTNAME})..."
 pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE_NAME}" \
   --ostype debian \
@@ -163,10 +171,15 @@ pct create "$CTID" "${TEMPLATE_STORAGE}:vztmpl/${TEMPLATE_NAME}" \
   --features nesting=1,keyctl=1 \
   --tags "$DEFAULT_TAGS" \
   --description "<h1>The Movie Hat</h1><p>Full-Stack Movie Selection Hat & Watchlist Manager</p>" \
+  "${PASSWORD_OPTS[@]}" \
   --onboot 1
 
 msg_info "Starting LXC container ${CTID}..."
 pct start "$CTID"
+
+if [ -n "$ROOT_PASSWORD" ]; then
+  echo "root:${ROOT_PASSWORD}" | pct exec "$CTID" -- chpasswd 2>/dev/null || true
+fi
 
 msg_info "Waiting for container network initialization..."
 attempts=0
@@ -199,6 +212,11 @@ echo -e "\n${GN}================================================================
 echo -e "  🎉 ${BGN}${APP} is running in Proxmox LXC ${CTID}!${CL}"
 echo -e "${GN}================================================================${CL}"
 echo -e "  🌐 Web Interface:      ${BL}http://${IP_ADDRESS}:3000${CL}"
+if [ -n "$ROOT_PASSWORD" ]; then
+  echo -e "  🔑 Container Login:    ${YW}root${CL} (Password: configured)"
+else
+  echo -e "  🔑 Container Login:    ${YW}root${CL} (Passwordless console via Proxmox GUI or 'pct enter ${CTID}')"
+fi
 echo -e "  📁 Persistent DB:     ${YW}/srv/movies.db${CL}"
 echo -e "  ⚙️ Service Command:    ${YW}systemctl status movie-hat${CL}"
 echo -e "  🔄 In-Container Update:${YW}update${CL}"
