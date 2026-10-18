@@ -80,7 +80,7 @@ CTID=$(pvesh get /cluster/nextid)
 HOSTNAME="$DEFAULT_HOSTNAME"
 CORES="$DEFAULT_CPU"
 RAM="$DEFAULT_RAM"
-DISK_SIZE="${DEFAULT_DISK}G"
+DISK_SIZE="$DEFAULT_DISK"
 BRIDGE="$DEFAULT_BRIDGE"
 NET_CONFIG="dhcp"
 UNPRIVILEGED="1"
@@ -97,8 +97,9 @@ if [ "$CHOICE" == "2" ]; then
   HOSTNAME=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --inputbox "Set Hostname:" 8 58 "$HOSTNAME" --title "Hostname" 3>&1 1>&2 2>&3)
   CORES=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --inputbox "Allocate CPU Cores:" 8 58 "$CORES" --title "CPU Cores" 3>&1 1>&2 2>&3)
   RAM=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --inputbox "Allocate RAM (MB):" 8 58 "$RAM" --title "RAM Allocation" 3>&1 1>&2 2>&3)
-  DISK_INPUT=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --inputbox "Allocate Disk Size (GB):" 8 58 "${DEFAULT_DISK}" --title "Disk Size" 3>&1 1>&2 2>&3)
-  DISK_SIZE="${DISK_INPUT}G"
+  DISK_INPUT=$(whiptail --backtitle "Proxmox VE Helper - ${APP}" --inputbox "Allocate Disk Size (GB integer):" 8 58 "${DEFAULT_DISK}" --title "Disk Size" 3>&1 1>&2 2>&3)
+  DISK_CLEAN=$(echo "$DISK_INPUT" | tr -d '[:alpha:]' | tr -d '[:space:]')
+  DISK_SIZE="${DISK_CLEAN:-$DEFAULT_DISK}"
 
   STORAGE_POOLS=()
   while IFS= read -r line; do
